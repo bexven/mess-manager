@@ -1,0 +1,23 @@
+# Optional, VPS-local override — NOT applied by default and NOT loaded unless
+# you copy this file to `docker-compose.override.yml` in the same directory
+# (Docker Compose auto-merges that filename with docker-compose.yml).
+#
+# The base docker-compose.yml binds the app to 127.0.0.1:3000 (loopback only)
+# on the assumption a reverse proxy (Nginx or Traefik) sits in front of it and
+# handles the public port + HTTPS. If you'd rather skip a reverse proxy and
+# reach the app directly at http://YOUR_VPS_IP:3000 instead (no HTTPS — logins
+# and session cookies travel in plain text, only do this on a network you
+# trust), copy this file to docker-compose.override.yml and:
+#
+#   1. Set NEXTAUTH_URL="http://YOUR_VPS_IP:3000" in your .env (not https —
+#      NextAuth disables secure cookies automatically for an http:// URL,
+#      which is required for login to work without HTTPS).
+#   2. Make sure your VPS firewall allows the port (e.g. `sudo ufw allow 3000/tcp`
+#      if ufw is active).
+#   3. If something else on the VPS already uses port 3000, change both the
+#      host side of the mapping below and NEXTAUTH_URL to match.
+
+services:
+  app:
+    ports:
+      - "3000:3000"

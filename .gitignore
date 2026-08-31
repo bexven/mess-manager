@@ -35,5 +35,9 @@ yarn-error.log*
 # docker volumes
 /pgdata
 
+# per-deployment local overrides (e.g. exposing the app on a public port
+# without a reverse proxy) — see docker-compose.override.yml.example
+/docker-compose.override.yml
+
 # Claude Code local session state (not part of the project)
 .claude/scheduled_tasks.lock
