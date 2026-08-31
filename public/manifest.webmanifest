@@ -1,0 +1,9 @@
+{
+  "name": "Mess Manager",
+  "short_name": "Mess Manager",
+  "description": "Household meal and expense tracker",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#16a350"
+}

@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum MealType {
+  LUNCH
+  DINNER
+}
+
+enum MonthStatus {
+  OPEN
+  CLOSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditEntity {
+  MEAL
+  GUEST_MEAL
+  EXPENSE
+  USER
+  MONTH
+  CATEGORY
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          Role     @default(USER)
+  active        Boolean  @default(true)
+  avatarDataUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mealEntries     MealEntry[]
+  expensesPaid    Expense[]   @relation("PaidBy")
+  expensesCreated Expense[]   @relation("ExpenseCreatedBy")
+  auditLogs       AuditLog[]  @relation("ChangedBy")
+  guestMealsAdded GuestMeal[] @relation("GuestAddedBy")
+
+  @@index([active])
+}
+
+model Month {
+  id        String      @id @default(cuid())
+  year      Int
+  month     Int
+  status    MonthStatus @default(OPEN)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  mealEntries MealEntry[]
+  guestMeals  GuestMeal[]
+  expenses    Expense[]
+
+  @@unique([year, month])
+}
+
+model MealEntry {
+  id          String    @id @default(cuid())
+  date        DateTime  @db.Date
+  mealType    MealType
+  userId      String
+  /// null = not yet updated by the member (shown as a neutral "pending" state); true = ate; false = did not eat.
+  ate         Boolean?
+  monthId     String
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+
+  user  User  @relation(fields: [userId], references: [id])
+  month Month @relation(fields: [monthId], references: [id])
+
+  @@unique([date, mealType, userId])
+  @@index([monthId])
+  @@index([date])
+}
+
+model GuestMeal {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  mealType  MealType
+  count     Int      @default(0)
+  note      String?
+  monthId   String
+  addedById String?
+  updatedAt DateTime @updatedAt
+
+  month   Month @relation(fields: [monthId], references: [id])
+  addedBy User? @relation("GuestAddedBy", fields: [addedById], references: [id])
+
+  @@unique([date, mealType])
+  @@index([monthId])
+}
+
+model Category {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  active    Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  expenses Expense[]
+}
+
+model Expense {
+  id                   String   @id @default(cuid())
+  date                 DateTime @db.Date
+  amount               Decimal  @db.Decimal(10, 2)
+  categoryId           String
+  description          String?
+  paidById             String
+  countsTowardMealCost Boolean  @default(true)
+  note                 String?
+  monthId              String
+  createdById          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  category  Category @relation(fields: [categoryId], references: [id])
+  paidBy    User     @relation("PaidBy", fields: [paidById], references: [id])
+  createdBy User?    @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  month     Month    @relation(fields: [monthId], references: [id])
+
+  @@index([monthId])
+  @@index([date])
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  entityType  AuditEntity
+  entityId    String
+  action      AuditAction
+  field       String?
+  oldValue    String?
+  newValue    String?
+  summary     String
+  changedById String
+  changedAt   DateTime    @default(now())
+
+  changedBy User @relation("ChangedBy", fields: [changedById], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([changedAt])
+}
