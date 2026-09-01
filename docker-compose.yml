@@ -34,6 +34,12 @@ services:
       SEED_SECOND_USER_PASSWORD: ${SEED_SECOND_USER_PASSWORD}
     # Bind to localhost only — the host's Nginx (see nginx/mess-manager.conf)
     # terminates TLS on the public subdomain and proxies here.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mess.rule=Host(`mess.bexven.tech`)"
+      - "traefik.http.routers.mess.entrypoints=websecure"
+      - "traefik.http.routers.mess.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mess.loadbalancer.server.port=3000"
     ports:
       - "8090:3000"
 
