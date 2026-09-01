@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Loader2, Info } from "lucide-react";
+import { Loader2, Info, Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showForgotHelp, setShowForgotHelp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,15 +56,25 @@ export function LoginForm() {
         <label className="label" htmlFor="password">
           Password
         </label>
-        <input
-          id="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          className="input"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            className="input pr-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => setShowForgotHelp((v) => !v)}
