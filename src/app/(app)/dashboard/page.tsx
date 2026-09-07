@@ -54,7 +54,7 @@ export default async function DashboardPage({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {todaySlots.map((slot) => (
             <MealSlotCard
-              key={slot.mealType}
+              key={`${todayStr}-${slot.mealType}`}
               date={todayStr}
               slot={slot}
               currentUserId={user.id}
