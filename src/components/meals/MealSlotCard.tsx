@@ -38,7 +38,7 @@ export function MealSlotCard({
       <div className="divide-y divide-slate-100">
         {slot.entries.map((entry) => (
           <MealToggleButton
-            key={entry.userId}
+            key={`${date}-${entry.userId}`}
             date={date}
             mealType={slot.mealType}
             userId={entry.userId}

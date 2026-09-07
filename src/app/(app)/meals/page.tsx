@@ -45,7 +45,7 @@ export default async function MealsPage({ searchParams }: { searchParams: { d?: 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {slots.map((slot) => (
           <MealSlotCard
-            key={slot.mealType}
+            key={`${dateStr}-${slot.mealType}`}
             date={dateStr}
             slot={slot}
             currentUserId={user.id}
