@@ -1,8 +1,7 @@
 import { requireUser } from "@/lib/session";
 import { getMonthReport, getDayMeals } from "@/lib/reports";
-import { resolveMonthParam, listExistingMonths, currentYearMonth, getOrCreateMonth } from "@/lib/month";
-import { formatMonthLabel, toDateInputValue } from "@/lib/utils";
-import { MonthSwitcher } from "@/components/MonthSwitcher";
+import { formatMonthLabel, formatDayLabel, toDateInputValue, isWithinMealEditWindow, MEAL_EDIT_WINDOW_DAYS } from "@/lib/utils";
+import { DateSwitcher } from "@/components/DateSwitcher";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { PersonCard } from "@/components/dashboard/PersonCard";
 import { SettlementBanner } from "@/components/dashboard/SettlementBanner";
@@ -15,20 +14,22 @@ import { ArrowRight } from "lucide-react";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { m?: string };
+  searchParams: { d?: string };
 }) {
   const user = await requireUser();
-  const { year, month } = resolveMonthParam(searchParams.m);
+  const dateStr = searchParams.d && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.d) ? searchParams.d : toDateInputValue(new Date());
+  const date = new Date(`${dateStr}T00:00:00.000Z`);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+  const isToday = dateStr === toDateInputValue(new Date());
 
-  const [report, existingMonths] = await Promise.all([getMonthReport(year, month), listExistingMonths()]);
+  const [report, daySlots] = await Promise.all([getMonthReport(year, month), getDayMeals(dateStr)]);
 
-  const todayStr = toDateInputValue(new Date());
-  const { year: curYear, month: curMonth } = currentYearMonth();
-  const [todaySlots, todayMonth] = await Promise.all([
-    getDayMeals(todayStr),
-    curYear === year && curMonth === month ? Promise.resolve(report.month) : getOrCreateMonth(curYear, curMonth),
-  ]);
-  const todayEditable = todayMonth.status === "OPEN" || user.role === "ADMIN";
+  const isAdmin = user.role === "ADMIN";
+  const monthOpen = report.month.status === "OPEN";
+  const withinWindow = isWithinMealEditWindow(dateStr);
+  const guestEditable = monthOpen || isAdmin;
+  const mealEditable = (monthOpen && withinWindow) || isAdmin;
 
   const nameById = new Map(report.users.map((u) => [u.id, u.name]));
 
@@ -37,30 +38,43 @@ export default async function DashboardPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500">{formatMonthLabel(year, month)}</p>
+          <p className="text-sm text-slate-500">
+            {formatMonthLabel(year, month)} &middot; {formatDayLabel(date)}
+          </p>
         </div>
-        <MonthSwitcher year={year} month={month} availableMonths={existingMonths} />
+        <DateSwitcher date={dateStr} />
       </div>
 
       <SummaryCards summary={report.summary} />
 
       <section>
         <div className="mb-2.5 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Today&apos;s Meals</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{isToday ? "Today's Meals" : "Meals"}</h2>
           <Link href="/meals" className="flex items-center gap-1 text-xs font-medium text-brand-600">
             Manage <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
+        {!monthOpen && !isAdmin && (
+          <div className="mb-2.5 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+            This month is closed. Only an admin can make changes.
+          </div>
+        )}
+        {monthOpen && !withinWindow && !isAdmin && (
+          <div className="mb-2.5 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+            This day is more than {MEAL_EDIT_WINDOW_DAYS} days old, so meals can no longer be toggled. Guest counts
+            can still be edited, and an admin can still change meals if needed.
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {todaySlots.map((slot) => (
+          {daySlots.map((slot) => (
             <MealSlotCard
-              key={`${todayStr}-${slot.mealType}`}
-              date={todayStr}
+              key={`${dateStr}-${slot.mealType}`}
+              date={dateStr}
               slot={slot}
               currentUserId={user.id}
-              isAdmin={user.role === "ADMIN"}
-              guestEditable={todayEditable}
-              mealEditable={todayEditable}
+              isAdmin={isAdmin}
+              guestEditable={guestEditable}
+              mealEditable={mealEditable}
             />
           ))}
         </div>
