@@ -50,11 +50,12 @@ export default async function ReportPage({ searchParams }: { searchParams: { m?:
       <section>
         <h2 className="mb-2.5 text-sm font-semibold text-slate-900">Per-Person Breakdown</h2>
         <div className="card overflow-x-auto p-0">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[620px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
                 <th className="px-4 py-2.5 font-medium">Person</th>
                 <th className="px-4 py-2.5 font-medium">Meals</th>
+                <th className="px-4 py-2.5 font-medium">Guests</th>
                 <th className="px-4 py-2.5 font-medium">Meal Cost</th>
                 <th className="px-4 py-2.5 font-medium">Other Share</th>
                 <th className="px-4 py-2.5 font-medium">Total Cost</th>
@@ -70,6 +71,7 @@ export default async function ReportPage({ searchParams }: { searchParams: { m?:
                   <tr key={p.userId} className="border-b border-slate-50 last:border-0">
                     <td className="px-4 py-2.5 font-medium text-slate-900">{nameById.get(p.userId) ?? "Unknown"}</td>
                     <td className="px-4 py-2.5 text-slate-600">{p.mealCount}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{p.guestMealCount > 0 ? p.guestMealCount : "—"}</td>
                     <td className="px-4 py-2.5 text-slate-600">{formatCurrency(p.personalMealCost)}</td>
                     <td className="px-4 py-2.5 text-slate-600">{formatCurrency(p.otherExpenseShare)}</td>
                     <td className="px-4 py-2.5 text-slate-600">{formatCurrency(p.totalCost)}</td>

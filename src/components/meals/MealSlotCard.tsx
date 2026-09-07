@@ -32,29 +32,32 @@ export function MealSlotCard({
           <h3 className="text-sm font-semibold text-slate-900">{MEAL_TYPE_LABELS[slot.mealType]}</h3>
         </div>
         <span className="badge bg-brand-50 text-brand-700">
-          {eatenCount + slot.guestCount} meal{eatenCount + slot.guestCount === 1 ? "" : "s"}
+          {eatenCount + slot.totalGuestCount} meal{eatenCount + slot.totalGuestCount === 1 ? "" : "s"}
         </span>
       </div>
       <div className="divide-y divide-slate-100">
-        {slot.entries.map((entry) => (
-          <MealToggleButton
-            key={`${date}-${entry.userId}`}
-            date={date}
-            mealType={slot.mealType}
-            userId={entry.userId}
-            userName={entry.userName}
-            initialAte={entry.ate}
-            editable={mealEditable && (isAdmin || entry.userId === currentUserId)}
-          />
-        ))}
-      </div>
-      <div className="mt-1">
-        <GuestMealEditor
-          date={date}
-          mealType={slot.mealType}
-          initialCount={slot.guestCount}
-          editable={guestEditable}
-        />
+        {slot.entries.map((entry) => {
+          const isOwn = isAdmin || entry.userId === currentUserId;
+          return (
+            <div key={`${date}-${entry.userId}`} className="py-1">
+              <MealToggleButton
+                date={date}
+                mealType={slot.mealType}
+                userId={entry.userId}
+                userName={entry.userName}
+                initialAte={entry.ate}
+                editable={mealEditable && isOwn}
+              />
+              <GuestMealEditor
+                date={date}
+                mealType={slot.mealType}
+                hostUserId={entry.userId}
+                initialCount={entry.guestCount}
+                editable={guestEditable && isOwn}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

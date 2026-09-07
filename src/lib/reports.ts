@@ -25,8 +25,9 @@ export interface MonthReport {
 }
 
 async function getUsersInvolvedInMonth(monthId: string): Promise<UserLite[]> {
-  const [mealUserIds, expenseUserIds, activeUsers] = await Promise.all([
+  const [mealUserIds, guestHostIds, expenseUserIds, activeUsers] = await Promise.all([
     prisma.mealEntry.findMany({ where: { monthId }, distinct: ["userId"], select: { userId: true } }),
+    prisma.guestMeal.findMany({ where: { monthId }, distinct: ["hostUserId"], select: { hostUserId: true } }),
     prisma.expense.findMany({
       where: { monthId },
       distinct: ["paidById"],
@@ -37,6 +38,7 @@ async function getUsersInvolvedInMonth(monthId: string): Promise<UserLite[]> {
 
   const involvedIds = new Set<string>([
     ...mealUserIds.map((m) => m.userId),
+    ...guestHostIds.map((g) => g.hostUserId),
     ...expenseUserIds.map((e) => e.paidById),
     ...activeUsers.map((u) => u.id),
   ]);
@@ -69,6 +71,7 @@ export async function getMonthReport(year: number, month: number): Promise<Month
   const people = users.map((u) => ({
     userId: u.id,
     mealCount: mealEntries.filter((m) => m.userId === u.id && m.ate).length,
+    guestMealCount: guestMeals.filter((g) => g.hostUserId === u.id).reduce((sum, g) => sum + g.count, 0),
   }));
 
   const payments = users.map((u) => ({
@@ -78,7 +81,6 @@ export async function getMonthReport(year: number, month: number): Promise<Month
       .reduce((sum, e) => sum + Number(e.amount), 0),
   }));
 
-  const guestMealCount = guestMeals.reduce((sum, g) => sum + g.count, 0);
   const mealExpenseTotal = expenses
     .filter((e) => e.countsTowardMealCost)
     .reduce((sum, e) => sum + Number(e.amount), 0);
@@ -89,7 +91,6 @@ export async function getMonthReport(year: number, month: number): Promise<Month
   const summary = calculateMonthlySummary({
     people,
     payments,
-    guestMealCount,
     mealExpenseTotal,
     otherExpenseTotal,
     activeUserCount: users.length,
@@ -152,10 +153,12 @@ export async function getRecentDaysSummary(anchorDateStr: string, days = 10): Pr
       date: key,
       lunchEaten: mealEntries.filter((m) => m.mealType === "LUNCH" && m.date.toISOString().slice(0, 10) === key).length,
       dinnerEaten: mealEntries.filter((m) => m.mealType === "DINNER" && m.date.toISOString().slice(0, 10) === key).length,
-      lunchGuests:
-        guestMeals.find((g) => g.mealType === "LUNCH" && g.date.toISOString().slice(0, 10) === key)?.count ?? 0,
-      dinnerGuests:
-        guestMeals.find((g) => g.mealType === "DINNER" && g.date.toISOString().slice(0, 10) === key)?.count ?? 0,
+      lunchGuests: guestMeals
+        .filter((g) => g.mealType === "LUNCH" && g.date.toISOString().slice(0, 10) === key)
+        .reduce((sum, g) => sum + g.count, 0),
+      dinnerGuests: guestMeals
+        .filter((g) => g.mealType === "DINNER" && g.date.toISOString().slice(0, 10) === key)
+        .reduce((sum, g) => sum + g.count, 0),
     });
   }
 
@@ -164,9 +167,16 @@ export async function getRecentDaysSummary(anchorDateStr: string, days = 10): Pr
 
 export interface DayMealSlot {
   mealType: "LUNCH" | "DINNER";
-  entries: { userId: string; userName: string; ate: boolean | null; entryId: string }[];
-  guestCount: number;
-  guestNote: string | null;
+  entries: {
+    userId: string;
+    userName: string;
+    ate: boolean | null;
+    entryId: string;
+    guestCount: number;
+    guestNote: string | null;
+  }[];
+  /** Sum of every person's guest count, for the slot-level "N meals" badge. */
+  totalGuestCount: number;
 }
 
 export async function getDayMeals(dateStr: string): Promise<DayMealSlot[]> {
@@ -182,15 +192,24 @@ export async function getDayMeals(dateStr: string): Promise<DayMealSlot[]> {
   ]);
 
   return (["LUNCH", "DINNER"] as const).map((mealType) => {
+    const slotGuestMeals = guestMeals.filter((g) => g.mealType === mealType);
     const entries = mealEntries
       .filter((m) => m.mealType === mealType)
-      .map((m) => ({ userId: m.userId, userName: m.user.name, ate: m.ate, entryId: m.id }));
-    const guest = guestMeals.find((g) => g.mealType === mealType);
+      .map((m) => {
+        const guest = slotGuestMeals.find((g) => g.hostUserId === m.userId);
+        return {
+          userId: m.userId,
+          userName: m.user.name,
+          ate: m.ate,
+          entryId: m.id,
+          guestCount: guest?.count ?? 0,
+          guestNote: guest?.note ?? null,
+        };
+      });
     return {
       mealType,
       entries,
-      guestCount: guest?.count ?? 0,
-      guestNote: guest?.note ?? null,
+      totalGuestCount: slotGuestMeals.reduce((sum, g) => sum + g.count, 0),
     };
   });
 }

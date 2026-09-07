@@ -8,6 +8,8 @@ export interface PersonMealInput {
   userId: string;
   /** Number of meal slots (lunch/dinner) this person marked "Ate" during the month. */
   mealCount: number;
+  /** Guest meals this person hosted during the month — billed to them like their own meals. */
+  guestMealCount: number;
 }
 
 export interface PersonPaymentInput {
@@ -21,8 +23,6 @@ export interface MonthlyCalculationInput {
   people: PersonMealInput[];
   /** Amounts paid per active user (may include users with 0 meals but who still paid). */
   payments: PersonPaymentInput[];
-  /** Total guest meals (lunch + dinner) for the month. Not attributed to any person. */
-  guestMealCount: number;
   /** Sum of expense amounts flagged countsTowardMealCost = true. */
   mealExpenseTotal: number;
   /** Sum of expense amounts flagged countsTowardMealCost = false. */
@@ -34,6 +34,7 @@ export interface MonthlyCalculationInput {
 export interface PersonSummary {
   userId: string;
   mealCount: number;
+  guestMealCount: number;
   personalMealCost: number;
   otherExpenseShare: number;
   totalCost: number;
@@ -62,7 +63,8 @@ export function round2(value: number): number {
 
 export function calculateMonthlySummary(input: MonthlyCalculationInput): MonthlySummary {
   const totalPersonalMeals = input.people.reduce((sum, p) => sum + p.mealCount, 0);
-  const totalMeals = totalPersonalMeals + input.guestMealCount;
+  const guestMealCount = input.people.reduce((sum, p) => sum + p.guestMealCount, 0);
+  const totalMeals = totalPersonalMeals + guestMealCount;
 
   const mealCost = totalMeals > 0 ? input.mealExpenseTotal / totalMeals : 0;
 
@@ -72,7 +74,8 @@ export function calculateMonthlySummary(input: MonthlyCalculationInput): Monthly
   const paidByUser = new Map(input.payments.map((p) => [p.userId, p.totalPaid]));
 
   const people: PersonSummary[] = input.people.map((person) => {
-    const personalMealCost = person.mealCount * mealCost;
+    const billedMeals = person.mealCount + person.guestMealCount;
+    const personalMealCost = billedMeals * mealCost;
     const totalCost = personalMealCost + otherExpenseSharePerUser;
     const totalPaid = paidByUser.get(person.userId) ?? 0;
     const balance = totalPaid - totalCost;
@@ -80,6 +83,7 @@ export function calculateMonthlySummary(input: MonthlyCalculationInput): Monthly
     return {
       userId: person.userId,
       mealCount: person.mealCount,
+      guestMealCount: person.guestMealCount,
       personalMealCost: round2(personalMealCost),
       otherExpenseShare: round2(otherExpenseSharePerUser),
       totalCost: round2(totalCost),
@@ -90,7 +94,7 @@ export function calculateMonthlySummary(input: MonthlyCalculationInput): Monthly
 
   return {
     totalPersonalMeals,
-    guestMealCount: input.guestMealCount,
+    guestMealCount,
     totalMeals,
     mealExpenseTotal: round2(input.mealExpenseTotal),
     otherExpenseTotal: round2(input.otherExpenseTotal),

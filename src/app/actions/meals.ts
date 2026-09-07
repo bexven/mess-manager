@@ -82,20 +82,27 @@ export async function setGuestMeal(input: unknown): Promise<ActionResult> {
     const user = await requireUser();
     const parsed = setGuestMealSchema.parse(input);
 
+    if (parsed.hostUserId !== user.id && user.role !== "ADMIN") {
+      throw new ForbiddenError("You can only add guest meals under your own name.");
+    }
+
     const date = dateOnlyFromString(parsed.date);
     const [year, month] = [date.getUTCFullYear(), date.getUTCMonth() + 1];
     const monthRecord = await assertMonthEditable(year, month, user.role === "ADMIN");
 
+    const hostUser = await prisma.user.findUniqueOrThrow({ where: { id: parsed.hostUserId } });
+
     const existing = await prisma.guestMeal.findUnique({
-      where: { date_mealType: { date, mealType: parsed.mealType } },
+      where: { date_mealType_hostUserId: { date, mealType: parsed.mealType, hostUserId: parsed.hostUserId } },
     });
 
     const guestMeal = await prisma.guestMeal.upsert({
-      where: { date_mealType: { date, mealType: parsed.mealType } },
+      where: { date_mealType_hostUserId: { date, mealType: parsed.mealType, hostUserId: parsed.hostUserId } },
       update: { count: parsed.count, note: parsed.note ?? null, addedById: user.id },
       create: {
         date,
         mealType: parsed.mealType,
+        hostUserId: parsed.hostUserId,
         count: parsed.count,
         note: parsed.note ?? null,
         monthId: monthRecord.id,
@@ -113,7 +120,7 @@ export async function setGuestMeal(input: unknown): Promise<ActionResult> {
         field: "count",
         oldValue: String(oldCount),
         newValue: String(parsed.count),
-        summary: `${formatDayLabel(date)} ${MEAL_TYPE_LABELS[parsed.mealType]} — Guest meals: ${oldCount} -> ${parsed.count}`,
+        summary: `${formatDayLabel(date)} ${MEAL_TYPE_LABELS[parsed.mealType]} — ${hostUser.name}'s guest meals: ${oldCount} -> ${parsed.count}`,
       });
     }
 

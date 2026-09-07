@@ -12,7 +12,9 @@ export function PersonCard({ name, person }: { name: string; person: PersonSumma
         <div>
           <p className="font-semibold text-slate-900">{name}</p>
           <p className="mt-0.5 text-sm text-slate-500">
-            {person.mealCount} meals &middot; Cost {formatCurrency(person.totalCost)}
+            {person.mealCount} meal{person.mealCount === 1 ? "" : "s"}
+            {person.guestMealCount > 0 && ` + ${person.guestMealCount} guest${person.guestMealCount === 1 ? "" : "s"}`}
+            {" "}&middot; Cost {formatCurrency(person.totalCost)}
           </p>
         </div>
         <span

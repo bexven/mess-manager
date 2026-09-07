@@ -24,14 +24,13 @@ describe("calculateMonthlySummary", () => {
     // Here mealCost is a clean ৳75/meal: 100 meals for Moni, 96 for Taufiq.
     const input: MonthlyCalculationInput = {
       people: [
-        { userId: "moni", mealCount: 100 },
-        { userId: "taufiq", mealCount: 96 },
+        { userId: "moni", mealCount: 100, guestMealCount: 0 },
+        { userId: "taufiq", mealCount: 96, guestMealCount: 0 },
       ],
       payments: [
         { userId: "moni", totalPaid: 10000 },
         { userId: "taufiq", totalPaid: 4700 },
       ],
-      guestMealCount: 0,
       mealExpenseTotal: 14700,
       otherExpenseTotal: 0,
       activeUserCount: 2,
@@ -57,14 +56,13 @@ describe("calculateMonthlySummary", () => {
     // net to zero, without asserting artificially round output numbers.
     const input: MonthlyCalculationInput = {
       people: [
-        { userId: "moni", mealCount: 92 },
-        { userId: "taufiq", mealCount: 88 },
+        { userId: "moni", mealCount: 92, guestMealCount: 0 },
+        { userId: "taufiq", mealCount: 88, guestMealCount: 0 },
       ],
       payments: [
         { userId: "moni", totalPaid: 10000 },
         { userId: "taufiq", totalPaid: 4700 },
       ],
-      guestMealCount: 0,
       mealExpenseTotal: 14700,
       otherExpenseTotal: 0,
       activeUserCount: 2,
@@ -80,17 +78,16 @@ describe("calculateMonthlySummary", () => {
     expect(round2(moni.balance + taufiq.balance)).toBeCloseTo(0, 1);
   });
 
-  it("counts guest meals toward total meals without assigning them to a person", () => {
+  it("bills guest meals to whichever person hosted them", () => {
     const input: MonthlyCalculationInput = {
       people: [
-        { userId: "a", mealCount: 10 },
-        { userId: "b", mealCount: 10 },
+        { userId: "a", mealCount: 10, guestMealCount: 5 },
+        { userId: "b", mealCount: 10, guestMealCount: 0 },
       ],
       payments: [
         { userId: "a", totalPaid: 1000 },
         { userId: "b", totalPaid: 0 },
       ],
-      guestMealCount: 5,
       mealExpenseTotal: 1000,
       otherExpenseTotal: 0,
       activeUserCount: 2,
@@ -100,14 +97,15 @@ describe("calculateMonthlySummary", () => {
 
     // 10 + 10 + 5 guest = 25 total meals, cost per meal = 40
     expect(summary.totalMeals).toBe(25);
+    expect(summary.guestMealCount).toBe(5);
     expect(summary.mealCost).toBeCloseTo(40, 2);
 
     const a = summary.people.find((p) => p.userId === "a")!;
     const b = summary.people.find((p) => p.userId === "b")!;
 
-    // Guests never appear as a "person" entry and don't inflate a or b's personal cost
-    // beyond their own 10 meals each.
-    expect(a.personalMealCost).toBeCloseTo(400, 2);
+    // a hosted the 5 guests, so a is billed for 15 meals' worth; b only pays
+    // for their own 10 — the guest cost isn't spread onto b.
+    expect(a.personalMealCost).toBeCloseTo(600, 2);
     expect(b.personalMealCost).toBeCloseTo(400, 2);
     expect(summary.people).toHaveLength(2);
   });
@@ -115,14 +113,13 @@ describe("calculateMonthlySummary", () => {
   it("splits non-meal (other) expenses equally across active users and folds it into balance", () => {
     const input: MonthlyCalculationInput = {
       people: [
-        { userId: "a", mealCount: 10 },
-        { userId: "b", mealCount: 10 },
+        { userId: "a", mealCount: 10, guestMealCount: 0 },
+        { userId: "b", mealCount: 10, guestMealCount: 0 },
       ],
       payments: [
         { userId: "a", totalPaid: 600 },
         { userId: "b", totalPaid: 400 },
       ],
-      guestMealCount: 0,
       mealExpenseTotal: 0,
       otherExpenseTotal: 1000,
       activeUserCount: 2,
@@ -148,11 +145,10 @@ describe("calculateMonthlySummary", () => {
   it("never divides by zero when there are no meals in the month yet", () => {
     const input: MonthlyCalculationInput = {
       people: [
-        { userId: "a", mealCount: 0 },
-        { userId: "b", mealCount: 0 },
+        { userId: "a", mealCount: 0, guestMealCount: 0 },
+        { userId: "b", mealCount: 0, guestMealCount: 0 },
       ],
       payments: [],
-      guestMealCount: 0,
       mealExpenseTotal: 0,
       otherExpenseTotal: 0,
       activeUserCount: 2,
@@ -168,14 +164,13 @@ describe("calculateMonthlySummary", () => {
   it("handles an odd person out with zero meals but who still made a payment", () => {
     const input: MonthlyCalculationInput = {
       people: [
-        { userId: "a", mealCount: 20 },
-        { userId: "b", mealCount: 0 },
+        { userId: "a", mealCount: 20, guestMealCount: 0 },
+        { userId: "b", mealCount: 0, guestMealCount: 0 },
       ],
       payments: [
         { userId: "a", totalPaid: 0 },
         { userId: "b", totalPaid: 2000 },
       ],
-      guestMealCount: 0,
       mealExpenseTotal: 2000,
       otherExpenseTotal: 0,
       activeUserCount: 2,

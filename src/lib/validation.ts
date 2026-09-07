@@ -13,6 +13,7 @@ export const toggleMealSchema = z.object({
 export const setGuestMealSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
   mealType: mealTypeSchema,
+  hostUserId: z.string().min(1),
   count: z.coerce.number().int().min(0).max(200),
   note: z.string().max(280).optional().nullable(),
 });

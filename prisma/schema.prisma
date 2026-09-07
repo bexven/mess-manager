@@ -48,11 +48,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  mealEntries     MealEntry[]
-  expensesPaid    Expense[]   @relation("PaidBy")
-  expensesCreated Expense[]   @relation("ExpenseCreatedBy")
-  auditLogs       AuditLog[]  @relation("ChangedBy")
-  guestMealsAdded GuestMeal[] @relation("GuestAddedBy")
+  mealEntries      MealEntry[]
+  expensesPaid     Expense[]   @relation("PaidBy")
+  expensesCreated  Expense[]   @relation("ExpenseCreatedBy")
+  auditLogs        AuditLog[]  @relation("ChangedBy")
+  guestMealsAdded  GuestMeal[] @relation("GuestAddedBy")
+  guestMealsHosted GuestMeal[] @relation("GuestHostedBy")
 
   @@index([active])
 }
@@ -92,19 +93,22 @@ model MealEntry {
 }
 
 model GuestMeal {
-  id        String   @id @default(cuid())
-  date      DateTime @db.Date
-  mealType  MealType
-  count     Int      @default(0)
-  note      String?
-  monthId   String
-  addedById String?
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  mealType   MealType
+  /// Which household member this guest meal belongs to (they're billed for it).
+  hostUserId String
+  count      Int      @default(0)
+  note       String?
+  monthId    String
+  addedById  String?
+  updatedAt  DateTime @updatedAt
 
-  month   Month @relation(fields: [monthId], references: [id])
-  addedBy User? @relation("GuestAddedBy", fields: [addedById], references: [id])
+  month    Month @relation(fields: [monthId], references: [id])
+  addedBy  User? @relation("GuestAddedBy", fields: [addedById], references: [id])
+  hostUser User  @relation("GuestHostedBy", fields: [hostUserId], references: [id])
 
-  @@unique([date, mealType])
+  @@unique([date, mealType, hostUserId])
   @@index([monthId])
 }
 

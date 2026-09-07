@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
-export const BACKUP_SCHEMA_VERSION = 1;
+export const BACKUP_SCHEMA_VERSION = 2;
 
 const roleSchema = z.enum(["ADMIN", "USER"]);
 const mealTypeSchema = z.enum(["LUNCH", "DINNER"]);
@@ -53,6 +53,7 @@ const guestMealSchema = z.object({
   id: z.string(),
   date: z.string(),
   mealType: mealTypeSchema,
+  hostUserId: z.string(),
   count: z.number(),
   note: z.string().nullable(),
   monthId: z.string(),
